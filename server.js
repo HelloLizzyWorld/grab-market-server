@@ -2,10 +2,24 @@ const express = require("express");
 const cors = require("cors");
 const app = express();
 const models = require("./models");
+const multer = require("multer");
+// const upload = multer({ dest: "uploads/" });
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: function (req, file, cb) {
+      cb(null, "uploads/");
+    },
+    filename: function (req, file, cb) {
+      cb(null, file.originalname);
+    },
+  }),
+});
+
 const port = 8080;
 
 app.use(express.json());
 app.use(cors());
+app.use("/uploads", express.static("uploads"));
 
 app.get("/products", (req, res) => {
   // const query = req.query;
@@ -24,7 +38,7 @@ app.get("/products", (req, res) => {
     })
     .catch((error) => {
       console.error(error);
-      res.send("에러 발생");
+      res.status(400).send("에러 발생");
     });
   // res.send({
   //   products: [
@@ -55,25 +69,26 @@ app.get("/products", (req, res) => {
 
 app.post("/products", (req, res) => {
   const body = req.body;
-  const { name, price, seller, description } = body;
-  if (!name || !price || !seller || !description) {
-    res.send("모든 필드를 입력해주세요.");
+  const { name, price, seller, description, imageUrl } = body;
+  if (!name || !price || !seller || !description || !imageUrl) {
+    res.status(400).send("모든 필드를 입력해주세요.");
   }
   models.Product.create({
     name, // name = name
     price,
     seller,
     description,
+    imageUrl,
   })
     .then((result) => {
       console.log("상품 생성 결과 : ", result);
       res.send({
-        result,
+        result, // result : result
       });
     })
     .catch((err) => {
       console.error(err);
-      res.send("상품 업로드에 문제가 발생했습니다.");
+      res.status(400).send("상품 업로드에 문제가 발생했습니다.");
     });
   res.send({
     body, //body : body
@@ -97,8 +112,15 @@ app.get("/products/:id", (req, res) => {
     })
     .catch((error) => {
       console.error(error);
-      console.log("상품 조회에 에러가 발생했습니다.");
+      res.status(400).send("상품 조회에 에러가 발생했습니다.");
     });
+});
+
+// 이미지 한개만 요청하는 경우
+app.post("/image", upload.single("image"), (req, res) => {
+  const file = req.file;
+  console.log(file);
+  res.send({ imageUrl: file.path });
 });
 
 app.listen(port, () => {
